@@ -1,0 +1,13 @@
+import { useEffect, useState } from 'react'
+import TopBar from '../components/TopBar'
+import FeedbackRows from '../components/FeedbackRows'
+import { supabase } from '../lib/supabase'
+
+const categories = ['All','General','Hostel','Canteen']
+export default function Dashboard({ profile }) {
+  const [category, setCategory] = useState('All'); const [items, setItems] = useState([]); const [message,setMessage]=useState(''); const [selected,setSelected]=useState('General'); const [status,setStatus]=useState(''); const [busy,setBusy]=useState(false)
+  async function load() { let q=supabase.from('feedback').select('fb_id,user_name,category,message,created_at').order('created_at',{ascending:false}); if(category!=='All') q=q.eq('category',category); const {data,error}=await q; if(error)setStatus(error.message); else setItems(data||[]) }
+  useEffect(()=>{load()},[category])
+  async function submit(e){e.preventDefault(); if(!message.trim())return; setBusy(true);setStatus(''); const {error}=await supabase.from('feedback').insert({user_id:profile.id,user_name:profile.name,category:selected,message:message.trim()}); if(error)setStatus(error.message); else {setMessage('');setStatus('Feedback submitted.'); if(category==='All'||category===selected)load()} setBusy(false)}
+  return <div className="app-shell"><TopBar name={profile.name}/><main className="content"><section className="hero-line"><div><p className="eyebrow">Student dashboard</p><h1>What needs<br/><em>attention?</em></h1></div><p className="hero-note">Report a campus issue with enough detail for someone to act on it.</p></section><section className="submission"><div className="section-intro"><p className="eyebrow">01 / New feedback</p><h2>Tell us what happened.</h2></div><form onSubmit={submit} className="feedback-form"><label>Area<select value={selected} onChange={e=>setSelected(e.target.value)}><option>General</option><option>Hostel</option><option>Canteen</option></select></label><label className="message-field">Description<textarea value={message} onChange={e=>setMessage(e.target.value)} rows="5" placeholder="Describe the issue, where it happened, and anything that would help resolve it." required /></label><div className="form-footer"><span>{status}</span><button className="primary-button" disabled={busy}>{busy?'Sending…':'Submit feedback'}</button></div></form></section><section className="feed"><div className="feed-head"><div><p className="eyebrow">02 / Campus feed</p><h2>Recent feedback</h2></div><select value={category} onChange={e=>setCategory(e.target.value)} aria-label="Filter feedback"><option value="All">All categories</option>{categories.slice(1).map(c=><option key={c}>{c}</option>)}</select></div><FeedbackRows items={items}/></section></main></div>
+}
